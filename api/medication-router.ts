@@ -83,11 +83,12 @@ export const medicationRouter = createRouter({
       strength: z.string().trim().max(120),
       prescribingClinician: z.string().trim().max(180),
       effectiveFrom: daySchema.optional(),
+      confirmedAgainstOriginal: z.boolean().refine((v) => v, { message: "Confirm the prescription first." }),
       ...scheduleInput,
     }))
     .mutation(async ({ ctx, input }) => {
       const { patient } = await requirePatientAccess(ctx.user.id, input.patientId, "caregiver");
-      const { patientId, times, effectiveFrom, ...values } = input;
+      const { patientId, times, effectiveFrom, confirmedAgainstOriginal, ...values } = input;
       const start = effectiveFrom ?? dayInTimezone(new Date(), patient.timezone);
       const scheduleTimes = JSON.stringify([...new Set(times)].sort());
       const id = await getDb().transaction(async (tx) => {
@@ -116,7 +117,7 @@ export const medicationRouter = createRouter({
         entityId: id,
         action: "schedule_created",
         reason: "Initial confirmed schedule",
-        after: { ...values, times, effectiveFrom: start },
+        after: { ...values, times, effectiveFrom: start, attested: confirmedAgainstOriginal },
       });
       return { id };
     }),

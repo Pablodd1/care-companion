@@ -55,7 +55,7 @@ export function MedicationFormDialog({ open, onOpenChange, draft }: { open: bool
       return toast.error("Enter at least one valid time, such as 08:00, 20:00.");
     }
     if (!confirmed) return toast.error("Confirm that you checked the original prescription first.");
-    create.mutate({ patientId: patient!.id, name, strength, dose, instructions, times: parsedTimes, prescribingClinician: clinician });
+    create.mutate({ patientId: patient!.id, name, strength, dose, instructions, times: parsedTimes, prescribingClinician: clinician, confirmedAgainstOriginal: confirmed });
   }
 
   return (
