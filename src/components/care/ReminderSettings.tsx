@@ -21,6 +21,24 @@ function bytesToBase64(value: ArrayBuffer | null) {
   return window.btoa(binary);
 }
 
+function bytesToBase64Url(value: ArrayBuffer | null) {
+  if (!value) return "";
+  return bytesToBase64(value).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+// A blocked notification prompt can never resolve in some browsers (observed on
+// iOS after the user once declined). Time-box it so the button always resolves.
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string) {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error(message)), ms)),
+  ]);
+}
+
+const PERMISSION_TIMEOUT_MS = 15_000;
+const SUBSCRIBE_TIMEOUT_MS = 20_000;
+const BLOCKED_MESSAGE = "Reminders are blocked on this device. Open the iPhone Settings app, tap Notifications, then Care Companion (or Safari), and allow notifications. Then try again here.";
+
 export function ReminderSettings() {
   const { patient } = useCare();
   const patientId = patient!.id;
@@ -36,7 +54,7 @@ export function ReminderSettings() {
   const unsubscribe = trpc.notifications.unsubscribe.useMutation({ onError: (error) => toast.error(error.message) });
   const sendTest = trpc.notifications.sendTest.useMutation({
     onSuccess: async (result) => {
-      toast.success("Test accepted by the push service", { description: `${result.sent} device${result.sent === 1 ? "" : "s"} accepted it. Check the iPhone screen; acceptance is not proof of display or acknowledgement.` });
+      toast.success("Test accepted by the push service", { description: `${result.sent} device${result.sent === 1 ? "" : "s"} accepted it. Check the phone screen; acceptance is not proof of display or acknowledgement.` });
       await invalidate();
     },
     onError: (error) => toast.error(error.message),
@@ -55,15 +73,32 @@ export function ReminderSettings() {
           ? "On iPhone, open Care Companion in Safari and choose Share → Add to Home Screen. Open that Home Screen icon, then enable reminders."
           : "This browser does not support Web Push reminders.");
       }
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") throw new Error("Notifications were not allowed. Check the iPhone or browser notification settings.");
+      if (Notification.permission === "denied") throw new Error(BLOCKED_MESSAGE);
+      const permission = await withTimeout(
+        Notification.requestPermission(),
+        PERMISSION_TIMEOUT_MS,
+        BLOCKED_MESSAGE,
+      );
+      if (permission !== "granted") throw new Error("Notifications were not allowed. You can change this in the browser or iPhone notification settings.");
       const registration = await navigator.serviceWorker.ready;
       let subscription = await registration.pushManager.getSubscription();
+      // Drop any subscription created with a previous VAPID key: reusing it
+      // would make every future send fail until the key pair is restored.
+      const subKey = (subscription as PushSubscription & { applicationServerKey?: ArrayBuffer | null }).applicationServerKey;
+      const staleKey = subscription && bytesToBase64Url(subKey ?? null) !== status.data.publicKey;
+      if (staleKey) {
+        await subscription!.unsubscribe();
+        subscription = null;
+      }
       if (!subscription) {
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: base64UrlToBytes(status.data.publicKey),
-        });
+        subscription = await withTimeout(
+          registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: base64UrlToBytes(status.data.publicKey),
+          }),
+          SUBSCRIBE_TIMEOUT_MS,
+          "The phone did not finish connecting to the reminder service. Check your connection and try again.",
+        );
       }
       await subscribe.mutateAsync({
         patientId,
