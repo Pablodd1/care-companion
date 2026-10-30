@@ -1,7 +1,15 @@
-const CACHE = "care-companion-shell-v2";
+const CACHE = "care-companion-shell-v3";
+const SHELL_ASSETS = ["/", "/manifest.webmanifest", "/icons/care-192.png", "/icons/care-512.png"];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(self.skipWaiting());
+  // Precache the SPA shell so an installed parent who opens the icon offline
+  // sees the app (with honest error states) instead of a blank white page.
+  // Medical/API responses are still never cached.
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await Promise.allSettled(SHELL_ASSETS.map((asset) => cache.add(new Request(asset, { cache: "reload" }))));
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener("activate", (event) => {
@@ -51,7 +59,13 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) return;
 
   if (request.mode === "navigate") {
-    event.respondWith(fetch(request).catch(() => caches.match(request)));
+    event.respondWith((async () => {
+      try {
+        return await fetch(request);
+      } catch {
+        return (await caches.match(request)) || (await caches.match("/")) || Response.error();
+      }
+    })());
     return;
   }
 
