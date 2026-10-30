@@ -65,7 +65,7 @@ app.get(Paths.oauthCallback, createOAuthCallbackHandler());
 // LOCAL VERIFICATION HARNESS ONLY: mint a session without Kimi OAuth so the
 // app can be driven end-to-end against a local database. Active only when
 // DEV_SESSION_SECRET is set; must never ship in a real deployment.
-if (process.env.DEV_SESSION_SECRET) {
+if (!env.isProduction && process.env.DEV_SESSION_SECRET) {
   app.get("/dev/session", async (c) => {
     if (c.req.query("secret") !== process.env.DEV_SESSION_SECRET) {
       return c.json({ error: "forbidden" }, 403);

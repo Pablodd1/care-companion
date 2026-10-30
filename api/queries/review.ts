@@ -4,7 +4,7 @@ import { getDb } from "./connection";
 type AuditInput = {
   patientId: number;
   actorUserId: number;
-  entityType: "medication" | "dose" | "meal" | "lab" | "note" | "reminder" | "review";
+  entityType: "medication" | "dose" | "meal" | "lab" | "note" | "reminder" | "review" | "member";
   entityId: number | string;
   action: string;
   reason?: string;

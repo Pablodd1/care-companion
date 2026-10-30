@@ -17,6 +17,7 @@ import { getDb } from "./queries/connection";
 import { dayOffset, minutesFromTime, parseTimes, requirePatientAccess } from "./queries/care";
 import { getDayNutritionTotals } from "./queries/nutrition";
 import { getPatientSchedulesForDay, isValidTimezone } from "./queries/medication-schedules";
+import { recordCareAudit } from "./queries/review";
 
 const daySchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 const optionalNumber = (max: number) => z.number().min(0).max(max).nullable().optional();
@@ -55,6 +56,13 @@ async function getDashboardData(patientId: number, day: string) {
   };
 }
 
+// Invite codes are caregiver secrets. superjson preserves undefined props on
+// the wire, so the fields must be structurally removed, not set undefined.
+function omitInviteSecrets<T extends { inviteCode: string; inviteExpiresAt: Date | null }>(patient: T) {
+  const { inviteCode, inviteExpiresAt, ...safe } = patient;
+  return safe;
+}
+
 export const careRouter = createRouter({
   bootstrap: authedQuery.query(async ({ ctx }) => {
     const rows = await getDb()
@@ -63,7 +71,12 @@ export const careRouter = createRouter({
       .innerJoin(patients, eq(patients.id, memberships.patientId))
       .where(eq(memberships.userId, ctx.user.id))
       .orderBy(patients.name);
-    return rows;
+    return rows.map(({ patient, role }) => ({
+      role,
+      // Invite codes are caregiver secrets; a parent-role member must not
+      // receive one merely by loading the app.
+      patient: role === "caregiver" ? patient : omitInviteSecrets(patient),
+    }));
   }),
 
   createPatient: authedQuery
@@ -80,6 +93,7 @@ export const careRouter = createRouter({
         dietInstructions: "",
         careNotes: "",
         inviteCode: nanoid(12),
+      inviteExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       }).$returningId();
       await getDb().insert(memberships).values({
         patientId: id,
@@ -100,6 +114,9 @@ export const careRouter = createRouter({
         eq(memberships.userId, ctx.user.id),
       )).limit(1);
       if (!existing) {
+        if (patient.inviteExpiresAt && new Date(patient.inviteExpiresAt) < new Date()) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "This invitation code has expired. Ask the caregiver for a new one." });
+        }
         await getDb().insert(memberships).values({
           patientId: patient.id,
           userId: ctx.user.id,
@@ -107,6 +124,54 @@ export const careRouter = createRouter({
         });
       }
       return { id: patient.id, role: existing?.role ?? "parent" };
+    }),
+
+  rotateInviteCode: authedQuery
+    .input(z.object({ patientId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      await requirePatientAccess(ctx.user.id, input.patientId, "caregiver");
+      const inviteCode = nanoid(12);
+      const inviteExpiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+      await getDb().update(patients).set({ inviteCode, inviteExpiresAt })
+        .where(eq(patients.id, input.patientId));
+      await recordCareAudit({
+        patientId: input.patientId,
+        actorUserId: ctx.user.id,
+        entityType: "member",
+        entityId: "invite",
+        action: "invite_code_rotated",
+      });
+      return { inviteCode };
+    }),
+
+  removeMember: authedQuery
+    .input(z.object({ patientId: z.number().int().positive(), membershipId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      await requirePatientAccess(ctx.user.id, input.patientId, "caregiver");
+      const [membership] = await getDb().select().from(memberships).where(and(
+        eq(memberships.id, input.membershipId),
+        eq(memberships.patientId, input.patientId),
+      )).limit(1);
+      if (!membership) throw new TRPCError({ code: "NOT_FOUND", message: "Member not found." });
+      if (membership.role === "caregiver") {
+        const caregivers = await getDb().select({ id: memberships.id }).from(memberships).where(and(
+          eq(memberships.patientId, input.patientId),
+          eq(memberships.role, "caregiver"),
+        ));
+        if (caregivers.length <= 1) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Add another caregiver before removing the last one." });
+        }
+      }
+      await getDb().delete(memberships).where(eq(memberships.id, membership.id));
+      await recordCareAudit({
+        patientId: input.patientId,
+        actorUserId: ctx.user.id,
+        entityType: "member",
+        entityId: `member-${membership.id}`,
+        action: "member_removed",
+        after: { role: membership.role },
+      });
+      return { ok: true };
     }),
 
   updatePatient: authedQuery

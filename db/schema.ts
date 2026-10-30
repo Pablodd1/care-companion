@@ -47,6 +47,7 @@ export const patients = mysqlTable("patients", {
   bpSystolicLow: int("bpSystolicLow"),
   bpDiastolicLow: int("bpDiastolicLow"),
   inviteCode: varchar("inviteCode", { length: 24 }).notNull().unique(),
+  inviteExpiresAt: timestamp("inviteExpiresAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()
@@ -311,7 +312,7 @@ export const careAuditEvents = mysqlTable(
     id: int("id").autoincrement().primaryKey(),
     patientId: bigint("patientId", { mode: "number", unsigned: true }).notNull(),
     actorUserId: bigint("actorUserId", { mode: "number", unsigned: true }).notNull(),
-    entityType: mysqlEnum("entityType", ["medication", "dose", "meal", "lab", "note", "reminder", "review"]).notNull(),
+    entityType: mysqlEnum("entityType", ["medication", "dose", "meal", "lab", "note", "reminder", "review", "member"]).notNull(),
     entityId: varchar("entityId", { length: 80 }).notNull(),
     action: varchar("action", { length: 100 }).notNull(),
     reason: text("reason").notNull(),

@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Navigate } from "react-router";
-import { Check, Copy, KeyRound, Plus, Save, UserRoundPlus, UsersRound } from "lucide-react";
+import { Check, Copy, KeyRound, Plus, RefreshCw, Save, UserRoundPlus, UsersRound } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/providers/trpc";
 import { useCare } from "@/components/care/CareProvider";
@@ -35,12 +35,21 @@ type FormState = Record<string, string>;
 
 export default function Profiles() {
   const { patient, rows, role, setSelectedId, refresh } = useCare();
+  // Invite secrets exist only on the caregiver branch of the bootstrap union.
+  const invite = patient! as unknown as { inviteCode: string; inviteExpiresAt: string | null };
   const utils = trpc.useUtils();
   const [form, setForm] = useState<FormState>({});
   const [addOpen, setAddOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [newYear, setNewYear] = useState("");
   const [copied, setCopied] = useState(false);
+  const rotate = trpc.care.rotateInviteCode.useMutation({
+    onSuccess: async () => {
+      await utils.care.bootstrap.invalidate();
+      toast.success("New invitation code created", { description: "Share it with the parent before it expires." });
+    },
+    onError: (error) => toast.error(error.message),
+  });
   const update = trpc.care.updatePatient.useMutation({
     onSuccess: async () => {
       await Promise.all([refresh(), utils.care.dashboard.invalidate(), utils.nutrition.list.invalidate(), utils.vitals.list.invalidate()]);
@@ -86,7 +95,7 @@ export default function Profiles() {
   }
 
   async function copyInvite() {
-    await navigator.clipboard.writeText(patient!.inviteCode);
+    await navigator.clipboard.writeText(invite.inviteCode ?? "");
     setCopied(true);
     toast.success("Private invitation copied");
   }
@@ -98,7 +107,30 @@ export default function Profiles() {
         <aside className="h-fit rounded-2xl border border-foreground/15 bg-secondary/60 p-4">
           <div className="mb-3 flex items-center gap-2"><UsersRound className="h-5 w-5 text-primary" /><h2 className="font-semibold">People in your care</h2></div>
           <div className="grid gap-1">{rows.map((row) => <button key={row.patient.id} onClick={() => setSelectedId(row.patient.id)} className={`min-h-12 rounded-lg px-3 text-left font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${row.patient.id === patient!.id ? "bg-primary text-primary-foreground" : "hover:bg-card"}`}>{row.patient.name}</button>)}</div>
-          <div className="mt-5 border-t border-foreground/10 pt-4"><p className="flex items-center gap-2 text-sm font-semibold"><KeyRound className="h-4 w-4 text-primary" /> Parent access</p><p className="mt-2 text-xs leading-relaxed text-foreground/60">The parent signs in with their own account, chooses “I have an invitation,” and enters this private code.</p><div className="mt-3 flex items-center gap-2"><code className="min-w-0 flex-1 truncate rounded-lg border border-foreground/15 bg-card px-3 py-2 text-sm font-semibold">{patient!.inviteCode}</code><Button variant="outline" size="icon" onClick={copyInvite} aria-label="Copy parent invitation">{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}</Button></div></div>
+          <div className="mt-5 border-t border-foreground/10 pt-4">
+            <p className="flex items-center gap-2 text-sm font-semibold">
+              <KeyRound className="h-4 w-4 text-primary" /> Parent access
+            </p>
+            <p className="mt-2 text-xs leading-relaxed text-foreground/60">
+              The parent signs in with their own account and enters this private code.
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <code className="min-w-0 flex-1 truncate rounded-lg border border-foreground/15 bg-card px-3 py-2 text-sm font-semibold">
+                {invite.inviteCode}
+              </code>
+              <Button variant="outline" size="icon" onClick={copyInvite} aria-label="Copy parent invitation">
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+              <Button variant="outline" size="icon" onClick={() => rotate.mutate({ patientId: patient!.id })} disabled={rotate.isPending} aria-label="Create a new invitation code">
+                {rotate.isPending ? <RefreshCw className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              </Button>
+            </div>
+            {invite.inviteExpiresAt ? (
+              <p className="mt-2 text-xs text-foreground/60">
+                {`Code works until ${new Date(invite.inviteExpiresAt).toLocaleDateString()}. Create a new one any time.`}
+              </p>
+            ) : null}
+          </div>
         </aside>
 
         <form onSubmit={submit} className="min-w-0">
