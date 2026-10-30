@@ -3,7 +3,7 @@ import { CalendarPlus, CheckCircle2, Clock3, History, Pill, Plus, Trash2 } from 
 import { toast } from "sonner";
 import { trpc } from "@/providers/trpc";
 import { useCare } from "@/components/care/CareProvider";
-import { EmptyState, LoadingState, PageHeader } from "@/components/care/PageHeader";
+import { EmptyState, LoadingState, PageHeader, QueryErrorState } from "@/components/care/PageHeader";
 import { MedicationFormDialog } from "@/components/care/MedicationFormDialog";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -39,7 +39,7 @@ export default function Medications() {
       <ReminderSettings />
       {role === "caregiver" && medicines.length ? <div className="mb-5 flex flex-col gap-3 rounded-xl border border-primary/20 bg-secondary/70 p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-semibold">Recurring device reminders</p><p className="text-sm text-foreground/65">Download the current calendar and import it on the parent’s phone. Re-import after schedule changes.</p></div><Button variant="outline" className="shrink-0" onClick={() => downloadMedicationCalendar(patient!.name, medicines)}><CalendarPlus className="h-4 w-4" /> Download .ics</Button></div> : null}
       {query.isLoading ? <LoadingState label="Loading confirmed medicines…" /> : null}
-      {!query.isLoading && !medicines.length ? <EmptyState title="No confirmed medicines" description={role === "caregiver" ? "Check the original prescription, then add the exact dose and daily times. A prescription photo can help create a draft from Documents." : "Your caregiver has not activated a medicine schedule yet."} action={role === "caregiver" ? <Button onClick={() => setAddOpen(true)}><Plus className="h-4 w-4" /> Add medicine</Button> : undefined} /> : null}
+      {query.error ? <QueryErrorState description={query.error.message} onRetry={() => query.refetch()} /> : null}{!query.isLoading && !query.error && !medicines.length ? <EmptyState title="No confirmed medicines" description={role === "caregiver" ? "Check the original prescription, then add the exact dose and daily times. A prescription photo can help create a draft from Documents." : "Your caregiver has not activated a medicine schedule yet."} action={role === "caregiver" ? <Button onClick={() => setAddOpen(true)}><Plus className="h-4 w-4" /> Add medicine</Button> : undefined} /> : null}
       <div className="grid gap-3">
         {medicines.map((medicine) => (
           <article key={medicine.id} className="surface p-5 sm:p-6">

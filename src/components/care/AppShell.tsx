@@ -146,7 +146,7 @@ export function AppShell() {
   }
   if (!rows.length) return <WelcomeSetup />;
 
-  const mobileItems = (role === "parent" ? parentNav : caregiverNav.slice(0, 5)).slice(0, 4);
+  const mobileItems = (role === "parent" ? parentNav : caregiverNav.slice(0, 5)).slice(0, 5);
   return (
     <div className="min-h-dvh bg-background">
       <ReminderWatcher />
@@ -192,11 +192,11 @@ export function AppShell() {
         </div>
       </main>
 
-      <nav aria-label="Primary mobile navigation" className="fixed bottom-3 left-3 right-3 z-40 grid grid-cols-4 rounded-2xl border border-foreground/15 bg-card/90 p-1.5 shadow-lg shadow-foreground/10 backdrop-blur-xl lg:hidden">
+      <nav aria-label="Primary mobile navigation" className="fixed bottom-3 left-3 right-3 z-40 grid grid-cols-5 rounded-2xl border border-foreground/15 bg-card/90 p-1.5 shadow-lg shadow-foreground/10 backdrop-blur-xl lg:hidden">
         {mobileItems.map((item) => (
           <NavLink key={item.path} to={item.path} className={({ isActive }) => `flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl px-1 text-[11px] font-semibold transition-colors ${isActive ? "bg-primary text-primary-foreground" : "text-foreground/65"}`}>
             <item.icon className="h-5 w-5" strokeWidth={1.8} aria-hidden="true" />
-            <span className="max-w-full truncate">{item.label === "Food & drink" ? "Food" : item.label === "Blood pressure" ? "BP" : item.label}</span>
+            <span className="max-w-full truncate">{item.label === "Food & drink" ? "Food" : item.label === "Blood pressure" ? "BP" : item.label === "My documents" ? "Docs" : item.label === "Notes & symptoms" ? "Notes" : item.label}</span>
           </NavLink>
         ))}
       </nav>

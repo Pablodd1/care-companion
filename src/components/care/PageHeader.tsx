@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Button } from "@/components/ui/button";
 
 export function PageHeader({ title, description, action }: { title: string; description: string; action?: ReactNode }) {
   return (
@@ -29,6 +30,16 @@ export function EmptyState({ title, description, action }: { title: string; desc
       <h2 className="text-xl font-semibold tracking-tight">{title}</h2>
       <p className="mx-auto mt-2 max-w-md text-base leading-relaxed text-foreground/65">{description}</p>
       {action ? <div className="mt-5 flex justify-center">{action}</div> : null}
+    </div>
+  );
+}
+
+export function QueryErrorState({ description, onRetry }: { description: string; onRetry?: () => void }) {
+  return (
+    <div className="border border-amber-500/40 bg-amber-500/10 px-6 py-6 text-center" role="alert">
+      <h2 className="text-lg font-semibold">This information could not load</h2>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-foreground/70">{description}</p>
+      {onRetry ? <Button className="mt-4" onClick={onRetry}>Try again</Button> : null}
     </div>
   );
 }

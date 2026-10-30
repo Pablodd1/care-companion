@@ -4,7 +4,7 @@ import { Activity, Bell, Camera, Check, CheckCircle2, Pill, ShieldAlert } from "
 import { toast } from "sonner";
 import { trpc } from "@/providers/trpc";
 import { useCare } from "@/components/care/CareProvider";
-import { EmptyState, LoadingState, PageHeader } from "@/components/care/PageHeader";
+import { EmptyState, LoadingState, PageHeader, QueryErrorState } from "@/components/care/PageHeader";
 import { Button } from "@/components/ui/button";
 import { formatDayTime } from "@/lib/care-utils";
 
@@ -32,7 +32,7 @@ export default function Alerts() {
       </div>
       <div className="mb-6 flex gap-3 rounded-xl border border-[#a14b43]/20 bg-[#f8e4df] p-4 text-sm leading-relaxed text-[#683832]"><ShieldAlert className="mt-0.5 h-5 w-5 shrink-0" /><p>This app is not an emergency response service. For urgent or severe symptoms, contact local emergency services or the care team using the existing care plan—do not wait for an app alert.</p></div>
       {query.isLoading ? <LoadingState label="Loading caregiver review…" /> : null}
-      {!query.isLoading && !alerts.length ? <EmptyState title={filter === "open" ? "No open review items" : "No alerts in this view"} description={filter === "open" ? "New skipped doses, out-of-range readings, and nutrition concerns will appear here." : "Choose another filter to see the review history."} /> : null}
+      {query.error ? <QueryErrorState description={query.error.message} onRetry={() => query.refetch()} /> : null}{!query.isLoading && !query.error && !alerts.length ? <EmptyState title={filter === "open" ? "No open review items" : "No alerts in this view"} description={filter === "open" ? "New skipped doses, out-of-range readings, and nutrition concerns will appear here." : "Choose another filter to see the review history."} /> : null}
       <div className="grid gap-3">
         {alerts.map((alert) => {
           const Icon = kindIcons[alert.kind];

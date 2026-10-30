@@ -3,7 +3,7 @@ import { Download, FileHeart, FileImage, FileText, Pill, Plus, ScanText, ShieldC
 import { toast } from "sonner";
 import { trpc } from "@/providers/trpc";
 import { useCare } from "@/components/care/CareProvider";
-import { EmptyState, LoadingState, PageHeader } from "@/components/care/PageHeader";
+import { EmptyState, QueryErrorState, LoadingState, PageHeader } from "@/components/care/PageHeader";
 import { MedicationFormDialog, type MedicationDraft } from "@/components/care/MedicationFormDialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -95,7 +95,7 @@ export default function Documents() {
       ) : null}
 
       {query.isLoading ? <LoadingState label="Opening the document vault…" /> : null}
-      {!query.isLoading && !query.data?.length ? <EmptyState title="No documents yet" description="Add a prescription, pharmacy label, pill bottle, lab report, or the current care plan. Images and PDFs up to 10 MB are supported." action={<Button onClick={() => setUploadOpen(true)}><Plus className="h-4 w-4" /> Add the first document</Button>} /> : null}
+      {query.error ? <QueryErrorState description={query.error.message} onRetry={() => query.refetch()} /> : null}{!query.isLoading && !query.error && !query.data?.length ? <EmptyState title="No documents yet" description="Add a prescription, pharmacy label, pill bottle, lab report, or the current care plan. Images and PDFs up to 10 MB are supported." action={<Button onClick={() => setUploadOpen(true)}><Plus className="h-4 w-4" /> Add the first document</Button>} /> : null}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {query.data?.map((document) => (
           <article key={document.id} className="surface overflow-hidden">
