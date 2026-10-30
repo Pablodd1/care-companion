@@ -5,7 +5,7 @@ import { trpc } from "@/providers/trpc";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "../../api/router";
 import { useCare } from "@/components/care/CareProvider";
-import { EmptyState, LoadingState, PageHeader } from "@/components/care/PageHeader";
+import { EmptyState, QueryErrorState, LoadingState, PageHeader } from "@/components/care/PageHeader";
 import { NutritionFormDialog } from "@/components/care/NutritionFormDialog";
 import { RecipeDialog } from "@/components/care/RecipeDialog";
 import { Button } from "@/components/ui/button";
@@ -59,11 +59,11 @@ export default function Nutrition() {
 
   const totals = query.data?.totals;
   const summary = [
-    { label: "Calories", value: totals?.calories ?? 0, target: patient!.calorieTarget, unit: "kcal" },
-    { label: "Carbohydrate", value: totals?.carbs ?? 0, target: patient!.carbLimit, unit: "g" },
-    { label: "Sugar", value: totals?.sugar ?? 0, target: patient!.sugarLimit, unit: "g" },
-    { label: "Sodium", value: totals?.sodium ?? 0, target: patient!.sodiumLimit, unit: "mg" },
-    { label: "Fluid", value: totals?.fluid ?? 0, target: patient!.fluidTarget, unit: "ml" },
+    { label: "Calories", value: totals?.calories ?? null, target: patient!.calorieTarget, unit: "kcal" },
+    { label: "Carbohydrate", value: totals?.carbs ?? null, target: patient!.carbLimit, unit: "g" },
+    { label: "Sugar", value: totals?.sugar ?? null, target: patient!.sugarLimit, unit: "g" },
+    { label: "Sodium", value: totals?.sodium ?? null, target: patient!.sodiumLimit, unit: "mg" },
+    { label: "Fluid", value: totals?.fluid ?? null, target: patient!.fluidTarget, unit: "ml" },
   ];
 
   return (
@@ -78,15 +78,15 @@ export default function Nutrition() {
         <div className="mb-5 flex items-center justify-between gap-4"><div><h2 className="text-xl font-semibold tracking-tight">Today’s estimated totals</h2><p className="mt-1 text-sm text-foreground/60">Blank or unknown values are not counted as zero in the original entry.</p></div><Sparkles className="h-5 w-5 text-primary" /></div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-5">
           {summary.map((item) => {
-            const over = item.target != null && item.value > item.target;
-            return <div key={item.label}><p className="care-label">{item.label}</p><p className={`mt-1 text-xl font-semibold tracking-tight ${over ? "text-[#8b3e35]" : ""}`}>{Math.round(item.value * 10) / 10} <span className="text-sm font-normal text-foreground/55">{item.unit}</span></p><p className="mb-2 text-xs text-foreground/55">{item.target ? `Care-team target ${item.target} ${item.unit}` : "No target entered"}</p>{item.target ? <Progress value={Math.min(100, (item.value / item.target) * 100)} className={`h-1.5 ${over ? "[&>div]:bg-[#a14b43]" : "[&>div]:bg-primary"}`} /> : null}</div>;
+            const over = item.target != null && item.value != null && item.value > item.target;
+            return <div key={item.label}><p className="care-label">{item.label}</p><p className={`mt-1 text-xl font-semibold tracking-tight ${over ? "text-[#8b3e35]" : ""}`}>{item.value == null ? <span className="text-base font-normal text-foreground/55">Unknown</span> : <>{Math.round(item.value * 10) / 10} <span className="text-sm font-normal text-foreground/55">{item.unit}</span></>}</p><p className="mb-2 text-xs text-foreground/55">{item.target ? `Care-team target ${item.target} ${item.unit}` : "No target entered"}</p>{item.target && item.value != null ? <Progress value={Math.min(100, (item.value / item.target) * 100)} className={`h-1.5 ${over ? "[&>div]:bg-[#a14b43]" : "[&>div]:bg-primary"}`} /> : null}</div>;
           })}
         </div>
       </section>
 
       <div className="mb-4"><h2 className="text-xl font-semibold tracking-tight">Recent entries</h2><p className="text-sm text-foreground/60">Photo analysis is an estimate. Caregiver flags stay out of the parent’s message.</p></div>
       {query.isLoading ? <LoadingState label="Loading food and drink records…" /> : null}
-      {!query.isLoading && !query.data?.entries.length ? <EmptyState title="No food or drink logged yet" description="Take a clear photo before eating, or enter a label manually. Include drinks so fluid totals are useful." action={<Button onClick={() => setPhotoOpen(true)}><ImagePlus className="h-4 w-4" /> Add the first photo</Button>} /> : null}
+      {query.error ? <QueryErrorState description={query.error.message} onRetry={() => query.refetch()} /> : null}{!query.isLoading && !query.error && !query.data?.entries.length ? <EmptyState title="No food or drink logged yet" description="Take a clear photo before eating, or enter a label manually. Include drinks so fluid totals are useful." action={<Button onClick={() => setPhotoOpen(true)}><ImagePlus className="h-4 w-4" /> Add the first photo</Button>} /> : null}
       <div className="grid gap-4">
         {query.data?.entries.map((meal) => (
           <article key={meal.id} className="surface overflow-hidden">
