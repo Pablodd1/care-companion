@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 192 32% 82%;
+    --foreground: 190 47% 12%;
+    --card: 60 14% 98%;
+    --card-foreground: 190 47% 12%;
+    --popover: 60 14% 98%;
+    --popover-foreground: 190 47% 12%;
+    --primary: 186 66% 24%;
+    --primary-foreground: 60 20% 98%;
+    --secondary: 193 39% 90%;
+    --secondary-foreground: 190 47% 12%;
+    --muted: 193 24% 88%;
+    --muted-foreground: 190 23% 30%;
+    --accent: 193 39% 90%;
+    --accent-foreground: 190 47% 12%;
+    --destructive: 4 65% 43%;
+    --destructive-foreground: 60 20% 98%;
+    --border: 190 23% 70%;
+    --input: 190 23% 62%;
+    --ring: 186 66% 24%;
+    --radius: 0.875rem;
+    --sidebar-background: 193 39% 90%;
+    --sidebar-foreground: 190 47% 12%;
+    --sidebar-primary: 186 66% 24%;
+    --sidebar-primary-foreground: 60 20% 98%;
+    --sidebar-accent: 192 32% 82%;
+    --sidebar-accent-foreground: 190 47% 12%;
+    --sidebar-border: 190 23% 70%;
+    --sidebar-ring: 186 66% 24%;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  html {
+    background: hsl(var(--background));
+    color-scheme: light;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply m-0 bg-background text-foreground;
+    min-width: 320px;
+    min-height: 100dvh;
+    overflow-x: hidden;
+    font-family: "Inter Variable", Inter, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.55;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    text-rendering: optimizeLegibility;
+  }
+
+  button, a, select, [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  button:not(:disabled), select:not(:disabled), [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+  }
+}
+
+@layer components {
+  .surface {
+    @apply rounded-2xl border border-foreground/15 bg-card;
+  }
+
+  .surface-pad {
+    @apply surface p-5 sm:p-6;
+  }
+
+  .metric-value {
+    @apply text-2xl font-semibold tracking-[-0.04em] text-foreground;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .care-label {
+    @apply text-xs font-semibold uppercase tracking-[0.12em] text-foreground/55;
+  }
+
+  .status-review {
+    @apply border border-[#a14b43]/25 bg-[#f8e4df] text-[#78352f];
+  }
+
+  .status-ok {
+    @apply border border-[#256b4a]/20 bg-[#def1e6] text-[#19533a];
+  }
+
+  .status-info {
+    @apply border border-primary/20 bg-secondary text-primary;
+  }
+}
+
+@layer components {
+  .visit-summary h3 {
+    @apply text-lg font-semibold;
+  }
+
+  .visit-summary section > p {
+    @apply mt-2 text-sm leading-6 text-foreground/60;
+  }
+
+  .summary-list {
+    @apply mt-3 divide-y divide-foreground/10 border-y border-foreground/10;
+  }
+
+  .summary-list > div {
+    @apply flex flex-col gap-1 py-3 text-sm leading-6;
+  }
+
+  .summary-list span {
+    @apply text-foreground/65;
+  }
+
+  .summary-list p {
+    @apply whitespace-pre-wrap text-foreground/65;
+  }
+
+  .visit-summary .summary-total {
+    @apply rounded-lg bg-secondary/60 p-3 font-medium text-foreground;
+  }
+}
+
+@media print {
+  @page {
+    margin: 13mm;
+  }
+
+  body {
+    background: white !important;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .visit-summary,
+  .visit-summary * {
+    visibility: visible;
+  }
+
+  .visit-summary {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    padding: 0;
+    color: #172f33;
+    background: white;
+    font-size: 10pt;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+
+  .visit-summary h3,
+  .summary-list > div,
+  .visit-summary header > div {
+    break-inside: avoid;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

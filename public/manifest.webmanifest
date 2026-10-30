@@ -1,0 +1,25 @@
+{
+  "name": "Care Companion — Family care, together",
+  "short_name": "Care Companion",
+  "description": "Shared family medicine schedules, meal estimates, blood-pressure records, documents, and caregiver review.",
+  "start_url": "/today",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f8f7",
+  "theme_color": "#216d68",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/care-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/care-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
